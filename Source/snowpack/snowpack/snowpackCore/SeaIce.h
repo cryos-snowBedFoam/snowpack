@@ -45,7 +45,6 @@ class SeaIce {
 		~SeaIce();
 		void ConfigSeaIce(const SnowpackConfig& i_cfg);
 		SeaIce& operator=(const SeaIce&); ///<Assignement operator
-		constexpr SeaIce(const SeaIce& org) = default;
 
 		//SeaIce(const SnowpackConfig& i_cfg);
 		static double compSeaIceHeatCapacity(const double& T, const double& Sal);
@@ -67,15 +66,14 @@ class SeaIce {
 		const static double InitSnowSalinity;
 
 		double SeaLevel;            ///< Sea level in domain (m)
-		double ForcedSeaLevel;      ///< Force sea level externally (Alpine3D)
 		double FreeBoard;           ///< Freeboard of sea ice (m)
 		double IceSurface;          ///< Interface sea ice/snow (m)
 		size_t IceSurfaceNode;      ///< Interface node sea ice/snow (m)
 		double OceanHeatFlux;       ///< Ocean heat flux (W/m^2)
 
 		double BottomSalFlux, TopSalFlux;	//Bottom and top salt flux
+		double TotalFloodingBucket;		//Total flooding with Bucket scheme (kg / m^2)
 
-		bool check_initial_conditions;
 		enum salinityprofiles{NONE, CONSTANT, COXANDWEEKS, LINEARSAL, LINEARSAL2, SINUSSAL};
 		salinityprofiles salinityprofile;
 
@@ -94,9 +92,10 @@ class SeaIce {
 		double getAvgBrineSalinity(const SnowStation& Xdata);
 		double getTotSalinity(const SnowStation& Xdata);
 
-		void InitSeaIce(SnowStation& Xdata);
-
 		void runSeaIceModule(SnowStation& Xdata, const CurrentMeteo& Mdata, BoundCond& Bdata, const double& sn_dt, SurfaceFluxes& Sdata);
+	private:
+		double elementTrackingCounter; // The counter for element tracking for making comparison of any snow properties between two simulation (-)
+
 
 }; //end class Snowpack
 

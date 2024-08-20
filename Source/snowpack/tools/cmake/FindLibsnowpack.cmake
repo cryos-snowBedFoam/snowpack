@@ -1,4 +1,3 @@
-#SPDX-License-Identifier: LGPL-3.0-or-later
 INCLUDE(LibFindMacros)
 
 # Where can we find something that looks like a Snowpack source tree?

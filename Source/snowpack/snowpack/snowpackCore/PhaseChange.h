@@ -37,7 +37,7 @@ class PhaseChange {
 		void reset();
 		void initialize(SnowStation& Xdata);								//Call before first call to compPhaseChange in a time step
 		void finalize(const SurfaceFluxes& Sdata, SnowStation& Xdata, const mio::Date& date_in);	//Call after last call to compPhaseChange in a time step
-		double compPhaseChange(SnowStation& Xdata, const mio::Date& date_in, const bool& verbose=true, const double& surf_melt=0.);	//Call to do a phase change in a time step, returning the temperature of the top node (K)
+		double compPhaseChange(SnowStation& Xdata, const mio::Date& date_in, const bool& verbose=true);	//Call to do a phase change in a time step, returning the temperature of the top node (K)
 
 		static const double RE_theta_r;		///< Residual Water Content for snow, when using water transport model "RICHARDSEQUATION"
 		static const double RE_theta_threshold; ///< Threshold Water Content for snow, when using water transport model "RICHARDSEQUATION", to determine what is dry and wet snow
@@ -50,9 +50,8 @@ class PhaseChange {
 
 		std::string watertransportmodel_snow;
 		std::string watertransportmodel_soil;
-		std::string forcing;
 		void compSubSurfaceMelt(ElementData& Edata, const unsigned int nSolutes, const double& dt,
-		                        double& ql_Rest, const mio::Date& date_in, double& mass_melt);
+		                        double& ql_Rest, const mio::Date& date_in);
 		void compSubSurfaceFrze(ElementData& Edata, const unsigned int nSolutes, const double& dt,
 		                        const mio::Date& date_in);
 
@@ -68,8 +67,6 @@ class PhaseChange {
 		double max_theta_ice;		///< maximum ice content of a layer, above which the presence of liquid water is allowed with sub-freezing temperatures
 
 		static const double theta_s;	///< Saturated Water Content, for now we say  1.0
-
-		bool enable_ice_reservoir;          ///< Ice reservoir
 };
 
 #endif

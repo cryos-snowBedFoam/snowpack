@@ -40,6 +40,9 @@
 	#define SN_VERSION STR2( _VERSION )
 #endif
 
+/// @brief Initial value for stability parameter
+#define INIT_STABILITY 999.
+
 namespace Constants {
 	const double undefined = -999.; ///<This is the snowpack undefined value
 	const int iundefined = -999; ///<This is the snowpack undefined value
@@ -60,14 +63,13 @@ namespace Constants {
 	/// @name Albedo (1)
 	//@{
 	const double min_albedo = 0.3;
-	const double max_albedo = 0.9;
+	const double max_albedo = 0.99;
 	const double glacier_albedo = 0.3;
-	const double blueice_albedo = 0.6;
 	//@}
 	/// @name Emissivity (1)
 	//@{
 	const double emissivity_snow = 0.98;
-  const double emissivity_soil = 0.95;
+	const double emissivity_soil = 0.95;
 
 	//@}
 	/// @name Density (kg m-3)
@@ -79,16 +81,16 @@ namespace Constants {
 
 	///@name Specific heat (J kg-1 K-1)
 	//@{
-	const double specific_heat_ice = 2100.0; ///< at T = 0 degC
+	const double specific_heat_ice = 2050; // at 0 C.................2100.0; ///< at T = 0 degC
 	const double specific_heat_water = 4190.0; ///< at T = 0 degC
 	const double specific_heat_air = 1004.67; ///< see Stull "Meteorology for scientists and engineers" p44
 	//@}
 
 	///@name Thermal conductivity of snow components ice, water and air (W m-1 K-1)
 	//@{
-	const double conductivity_ice = 2.2; ///< (W m-1 K-1)
-	const double conductivity_water = 0.598; ///< (W m-1 K-1)
-	const double conductivity_air = 0.026; ///< (W m-1 K-1)
+	const double conductivity_ice = 2.22; // at 0 C.................2.2; ///< (W m-1 K-1)
+	const double conductivity_water = 0.555; // at 0 C.................0.598; ///< (W m-1 K-1)
+	const double conductivity_air = 0.02434; // at 0 C.................0.026; ///< (W m-1 K-1)
 	//@}
 
 	///@name Vapor Diffusion in Air and Snow (m2 s-1)

@@ -6,6 +6,7 @@ SET(core_sources
 	snowpackCore/Aggregate.cc
 	snowpackCore/WaterTransport.cc
 	snowpackCore/VapourTransport.cc
+	snowpackCore/VapourTransport_OF_to_SN.cc
 	snowpackCore/ReSolver1d.cc
 	snowpackCore/Canopy.cc
 	snowpackCore/Metamorphism.cc

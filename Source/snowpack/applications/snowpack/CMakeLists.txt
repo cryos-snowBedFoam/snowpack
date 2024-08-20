@@ -1,10 +1,9 @@
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/")
 INCLUDE("${CMAKE_MODULE_PATH}/BuildVersion.cmake")
-BuildVersionGIT()
-SET(BINARY "snowpack.app")
+BuildVersion()
 
 IF(MSVC)
-	SET(getopt_src getopt.c)
+	SET(getopt_src getopt.c getopt_long.c)
 ENDIF(MSVC)
 
 SET(snowpack-app_sources
@@ -36,11 +35,10 @@ IF(UNIX)
 ENDIF(UNIX)
 
 #Prepare executable
+SET(BINARY "snowpack.app")
 ADD_EXECUTABLE(${BINARY} ${snowpack-app_sources})
 TARGET_LINK_LIBRARIES(${BINARY} ${LIBSNOWPACK_LIBRARY} ${METEOIO_LIBRARY} ${EXTRA_LINKS})
-IF(BUILD_STATIC_LIBS)
-	TARGET_LINK_OPTIONS(${BINARY} PRIVATE -static-libgcc -static-libstdc++ -static)
-ENDIF(BUILD_STATIC_LIBS)
+
 SET_TARGET_PROPERTIES(${BINARY} PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
 	CLEAN_DIRECT_OUTPUT 1

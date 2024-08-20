@@ -50,14 +50,14 @@
 class VapourTransport : public WaterTransport {
 	public:
 		VapourTransport(const SnowpackConfig& cfg);
-		void compTransportMass(const CurrentMeteo& Mdata, double& ql, SnowStation& Xdata, SurfaceFluxes& Sdata);
+		void compTransportMass(const CurrentMeteo& Mdata, double& ql, SnowStation& Xdata, SurfaceFluxes& Sdata, const double& surfaceVaporPressure);
 
 	private:
+
 		bool compDensityProfile(const CurrentMeteo& Mdata, SnowStation& Xdata,
-                                std::vector<double>& hm_, std::vector<double>& as_,
-                                const std::vector<double>& D_el, std::vector<double>& oldVaporDenNode);
+                              const bool& ThrowAtNoConvergence, double& ql, const double& surfaceVaporPressure, std::vector<double>& hm_,std::vector<double>& as_, const std::vector<double>& D_el, std::vector<double>& oldVaporDenNode);
 		void compSurfaceSublimation(const CurrentMeteo& Mdata, double& ql, SnowStation& Xdata, SurfaceFluxes& Sdata);
-		void LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& ql);
+		void LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& ql, const double& surfaceVaporPressure);
 		double dRhov_dT(const double Tem);
 
 		ReSolver1d RichardsEquationSolver1d;
@@ -68,17 +68,19 @@ class VapourTransport : public WaterTransport {
 
 		std::string watertransportmodel_snow;
 		std::string watertransportmodel_soil;
-		double sn_dt, timeStep, waterVaporTransport_timeStep;
-		const static double VapourTransport_timeStep;
+		double sn_dt,waterVaporTransport_timeStep;
+		double timeStep, mint, maxt;
 		double hoar_thresh_rh, hoar_thresh_vw, hoar_thresh_ta;
+		//double hoar_density_buried, hoar_density_surf, hoar_min_size_buried;
+		//double minimum_l_element;
 		bool useSoilLayers, water_layer;
 
-		bool enable_vapour_transport;
-		double diffusionScalingFactor_, height_of_meteo_values;
+		bool enable_vapour_transport,enable_vapour_transport_soil,waterVaporTransport_timeStepAdjust;
+		
+		double diffusionScalingFactor_,height_of_meteo_values, f;
+		
 		bool adjust_height_of_meteo_values;
-
-		const static double f;
-
-		bool waterVaporTransport_timeStepAdjust;
+		
+		std::string vapour_transport_model;		
 };
 #endif // End of VapourTransport.h}

@@ -35,6 +35,7 @@ class SnowpackConfig : public mio::Config {
 		 */
 		SnowpackConfig(const std::string& i_filename);
 		SnowpackConfig(const mio::Config& i_cfg);
+		~SnowpackConfig() {}
 
 	private:
 		void setDefaults();
@@ -42,7 +43,7 @@ class SnowpackConfig : public mio::Config {
 
 		static const bool __init;     ///<helper variable to enable the init of static collection data
 		static bool initStaticData(); ///<initialize the static containers
-		static std::map<std::string, std::string> snowpackConfig, advancedConfig, inputConfig, outputConfig, TechSnowConfig;
+		static std::map<std::string, std::string> snowpackConfig, advancedConfig, inputConfig, outputConfig;
 };
 
 #endif

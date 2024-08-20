@@ -23,11 +23,10 @@
 #include <snowpack/Utils.h>
 #include <stdio.h>
 
-static const bool ZeroFluxLowerBoundary_diffusion = false;
+static const bool ZeroFluxLowerBoundary_diffusion = true;
 static const bool ZeroFluxUpperBoundary_diffusion = true;
 static const bool ZeroFluxLowerBoundary_advection = false;
-static const bool ZeroFluxUpperBoundary_advection_in = false;	// For incoming flux: set to false would reflect fresh water influx in case of rain or condensation
-static const bool ZeroFluxUpperBoundary_advection_out = true;	// For outgoing flux: set to true would reflect that evaporation would only consist of fresh water
+static const bool ZeroFluxUpperBoundary_advection = false;
 
 #ifdef CLAPACK
 	// Matching C data types with FORTRAN data types (taken from f2c.h):
@@ -100,20 +99,16 @@ void SalinityTransport::SetDomainSize(size_t nE) {
 /**
  * @brief Solve diffusion-advection equation using the Crank-Nicolson implicit, or fully implicit method\n
  * @author Nander Wever
- * @details This function solves the following equation (<i>n</i> and <i>i</i> denoting time and spatial level, respectively):
-\f[
-\begin{multlined}
+ * @par This function solves the following equation ($n$ and $i$ denoting time and spatial level, respectively), in Latex code:
+\begin{multline}
 \frac{ \left ( \theta^{n+1}_i S_{\mathrm{b}, i}^{n+1} - \theta^{n}_i S_{\mathrm{b}, i}^{n} \right ) } { \Delta t } \\
 - f \left [ \left ( \frac{ 2 D_{i+1}^{n} \theta^{n+1}_{i+1} S_{\mathrm{b}, i+1}^{n+1} }{ \Delta z_{\mathrm{up}} \left ( \Delta z_{\mathrm{up}} + \Delta z_{\mathrm{down}} \right ) } - \frac{ 2 D_{i}^{n} \theta^{n+1}_{i} S_{\mathrm{b}, i}^{n+1} }{\left ( \Delta z_{\mathrm{up}} \Delta z_{\mathrm{down}} \right ) } + \frac{ D_{i-1}^{n} \theta^{n+1}_{i-1} S_{\mathrm{b}, i-1}^{n+1} }{ \Delta z_{\mathrm{down}} \left ( \Delta z_{\mathrm{up}} + \Delta z_{\mathrm{down}} \right ) } \right ) \right ] \\
 - \left ( 1-f \right ) \left [ \left ( \frac{ 2 D_{i+1}^{n} \theta^{n}_{i+1} S_{\mathrm{b}, i+1}^{n} }{ \Delta z_{\mathrm{up}} \left ( \Delta z_{\mathrm{up}} + \Delta z_{\mathrm{down}} \right ) } - \frac{ 2 D_{i}^{n} \theta^{n}_{i} S_{\mathrm{b}, i}^{n} }{\left ( \Delta z_{\mathrm{up}} \Delta z_{\mathrm{down}} \right ) } + \frac{ D_{i-1}^{n} \theta^{n}_{i-1} S_{\mathrm{b}, i-1}^{n} }{ \Delta z_{\mathrm{down}} \left ( \Delta z_{\mathrm{up}} + \Delta z_{\mathrm{down}} \right ) } \right ) \right ] \\
 - f \left [ \left ( \frac{q^{n}_{i+1} S_{\mathrm{b},i+1}^{n+1} - q^{n}_{i-1} S_{\mathrm{b},i-1}^{n+1}}{\left ( \Delta z_{\mathrm{up}} + \Delta z_{\mathrm{down}} \right ) } \right ) \right ] - \left ( 1-f \right ) \left [ \left ( \frac{q^{n}_{i+1} S_{\mathrm{b},i+1}^{n} - q^{n}_{i-1} S_{\mathrm{b},i-1}^{n}}{\left ( \Delta z_{\mathrm{up}} + \Delta z_{\mathrm{down}} \right ) } \right ) \right ] - s_{\mathrm{sb}} = 0
-\end{multlined}
-\f]
-Here, \f$f=1\f$ results in the fully implicit scheme, whereas \f$f=0.5\f$ corresponds to the Crank-Nicolson scheme. The implicit scheme is first order accurate, whereas the Crank-Nicolson scheme is second order accurate. Furthermore, both are unconditionally stable and suffer only minimal numerical diffusion for the advection part. As with many other common schemes, the advection part is not perfectly conserving sharp transitions. Futhermore, the reason to not use the fully implicit or the Crank Nicolson scheme is the occurrence of spurious oscillations in the solution, which negatively impact the accuracy of the simulations more than the negative effect on computational efficiency imposed by the CFL criterion required for the explicit method (see SalinityTransport::SolveSalinityTransportEquationExcplicit).
+\end{multline}
+Here, $f=1$ results in the fully implicit scheme, whereas $f=0.5$ corresponds to the Crank-Nicolson scheme. The implicit scheme is first order accurate, whereas the Crank-Nicolson scheme is second order accurate. Furthermore, both are unconditionally stable and suffer only minimal numerical diffusion for the advection part. As with many other common schemes, the advection part is not perfectly conserving sharp transitions. Futhermore, the reason to not use the fully implicit or the Crank Nicolson scheme is the occurrence of spurious oscillations in the solution, which negatively impact the accuracy of the simulations more than the negative effect on computational efficiency imposed by the CFL criterion required for the explicit method (see SalinityTransport::SolveSalinityTransportEquationExcplicit).
  * @param dt Time step (s)
  * @param DeltaSal Result vector (change in salinity over time step)
- * @param f Set to 0.5 for Crank-Nicolson, or to 1.0 for fully implicit
- * @param DonorCell If true, use mass-conserving donor-cell scheme (upwind). If false, use default implicit discretization
  * @return false on error, true otherwise
  */
 bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, std::vector <double> &DeltaSal, const double f, const bool DonorCell) {
@@ -121,7 +116,6 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 	if(NumberOfElements==0) return false;	// Nothing to do
 
 	const bool WriteDebugOutput = false;
-	const bool UpstreamBoundaries = true;
 	if(WriteDebugOutput) setvbuf(stdout, NULL, _IONBF, 0);
 
 	// Declare and initialize l.h.s. matrix and r.h.s. vector
@@ -130,8 +124,7 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 	std::vector<double> adl(NumberOfElements-1, 0.);	// Matrix lower diagonal
 	std::vector<double> b(NumberOfElements, 0.);		// Vector
 
-	if((ZeroFluxUpperBoundary_advection_in && flux_up[NumberOfElements-1] > 0.)
-		|| (ZeroFluxUpperBoundary_advection_out && flux_up[NumberOfElements-1] < 0.)) flux_up[NumberOfElements-1] = 0.;
+	if(ZeroFluxUpperBoundary_advection) flux_up[NumberOfElements-1] = 0.;
 	if(ZeroFluxLowerBoundary_advection) flux_down[0] = 0.;
 
 	// Fill matrix and r.h.s. vector
@@ -160,10 +153,7 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 				// The diffusion term from below is added to the r.h.s.
 			}
 
-			// the advection part from below is a constant flux and is added to the r.h.s., except when UpstreamBoundaries are used
-			if (UpstreamBoundaries && flux_down[i] > 0.) {
-				ad[i] += f * flux_down[i] / (dz_up[i] + dz_down[i]);
-			}
+			// the advection part from below is a constant flux and is added to the r.h.s.
 		} else if(i==NumberOfElements-1) {
 			// the diffusion part:
 			if(NumberOfElements>1) adl[i-1] += -f * 2. * D[i-1] * theta2[i-1] / (dz_down[i] * (dz_up[i] + dz_down[i]));
@@ -206,9 +196,6 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 			}
 
 			// the advection part from above is a constant flux and is added to the r.h.s.
-			if (UpstreamBoundaries && flux_up[i] < 0.) {
-				ad[i] += f * flux_up[i] / (dz_up[i] + dz_down[i]);
-			}
 		} else {
 			// the diffusion part:
 			adu[i] += -f * 2. * D[i+1] * theta2[i+1] / (dz_up[i] * (dz_up[i] + dz_down[i]));
@@ -231,25 +218,21 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 			// No flux upper boundary for diffusion (mirroring the i-1 node)
 			if(ZeroFluxUpperBoundary_diffusion) {
 				if(NumberOfElements>1) {
-					b[i] += - (1. - f) * (2. * D[i] * theta1[i] * BrineSal[i]) / (dz_down[i] * (dz_up[i] + dz_down[i]))
-					        + (1. - f) * (2. * D[i-1] * theta1[i-1] * BrineSal[i-1]) / (dz_down[i] * (dz_up[i] + dz_down[i]));
+					b[i] += + (1. - f) * (2. * D[i] * theta1[i] * BrineSal[i]) / (dz_down[i] * (dz_up[i] + dz_down[i]))
+					        - (1. - f) * (2. * D[i-1] * theta1[i-1] * BrineSal[i-1]) / (dz_down[i] * (dz_up[i] + dz_down[i]));
 				}
 			} else {
-				b[i] +=  (1. - f) * (2. * D[i-1] * theta1[i-1] * BrineSal[i-1]) / (dz_down[i] * (dz_up[i] + dz_down[i]))
-				     -   (1. - f) * (2. * D[i] * theta1[i] * BrineSal[i]) / (dz_up[i] * dz_down[i])
-				     +   (1. - f) * (2. * D[i] * theta1[i] * TopSalinity) / (dz_up[i] * (dz_up[i] + dz_down[i]));
+				b[i] += (1. - f) * 2. * D[i] * theta1[i] * TopSalinity / (dz_up[i] * (dz_up[i] + dz_down[i]));
 			}
 		} else if(i==0) {
 			// No flux lower boundary for diffusion (mirroring the i+1 node)
 			if(ZeroFluxLowerBoundary_diffusion) {
 				if(NumberOfElements>1) {
-					b[i] += - (1. - f) * (2. * D[i] * theta1[i] * BrineSal[i]) / (dz_up[i] * (dz_up[i] + dz_down[i]))
-					        + (1. - f) * (2. * D[i+1] * theta1[i+1] * BrineSal[i+1]) / (dz_up[i] * (dz_up[i] + dz_down[i]));
+					b[i] += + (1. - f) * (2. * D[i] * theta1[i] * BrineSal[i]) / (dz_up[i] * (dz_up[i] + dz_down[i]))
+					        - (1. - f) * (2. * D[i+1] * theta1[i+1] * BrineSal[i+1]) / (dz_up[i] * (dz_up[i] + dz_down[i]));
 				}
 			} else {
-				b[i] += (1. - f) * 2. * D[i] * theta1[i] * BottomSalinity / (dz_down[i] * (dz_up[i] + dz_down[i]))
-				     -  (1. - f) * (2. * D[i] * theta1[i] * BrineSal[i]) / (dz_up[i] * dz_down[i])
-				     +  (1. - f) * (2. * D[i+1] * theta1[i+1] * BrineSal[i+1]) / (dz_up[i] * (dz_up[i] + dz_down[i]));
+				b[i] += (1. - f) * 2. * D[i] * theta1[i] * BottomSalinity / (dz_down[i] * (dz_up[i] + dz_down[i]));
 			}
 		} else {
 			b[i] +=  (1. - f) * (2. * D[i-1] * theta1[i-1] * BrineSal[i-1]) / (dz_down[i] * (dz_up[i] + dz_down[i]))
@@ -264,9 +247,9 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 			std::cerr << "Only one snow/ice element present, which is not implemented.\n";
 			throw;
 		} else if (i==0) {
-			b[i] += (1. - f) * (flux_up[i] * ((!DonorCell || flux_up[i]>0.) ? (BrineSal[i+1]) : (BrineSal[i])) - flux_down[i] * (((!DonorCell && !UpstreamBoundaries) || flux_down[i]<0.) ? (BottomSalinity) : (BrineSal[i]))) / (dz_up[i] + dz_down[i]) / ((DonorCell) ? (0.5) : (1.));
+			b[i] += (1. - f) * (flux_up[i] * ((!DonorCell || flux_up[i]>0.) ? (BrineSal[i+1]) : (BrineSal[i])) - flux_down[i] * ((!DonorCell || flux_down[i]<0.) ? (BottomSalinity) : (BrineSal[i]))) / (dz_up[i] + dz_down[i]) / ((DonorCell) ? (0.5) : (1.));
 		} else if (i==NumberOfElements-1) {
-			b[i] += (1. - f) * (flux_up[i] * (((!DonorCell && !UpstreamBoundaries) || flux_up[i]>0.) ? (TopSalinity) : (BrineSal[i])) - flux_down[i] * ((!DonorCell || flux_down[i]<0.) ? (BrineSal[i-1]) : (BrineSal[i]))) / (dz_up[i] + dz_down[i]) / ((DonorCell) ? (0.5) : (1.));
+			b[i] += (1. - f) * (flux_up[i] * ((!DonorCell || flux_up[i]>0.) ? (TopSalinity) : (BrineSal[i])) - flux_down[i] * ((!DonorCell || flux_down[i]<0.) ? (BrineSal[i-1]) : (BrineSal[i]))) / (dz_up[i] + dz_down[i]) / ((DonorCell) ? (0.5) : (1.));
 		} else {
 			b[i] += (1. - f) * (flux_up[i] * ((!DonorCell || flux_up[i]>0.) ? (BrineSal[i+1]) : (BrineSal[i])) - flux_down[i] * ((!DonorCell || flux_down[i]<0.) ? (BrineSal[i-1]) : (BrineSal[i]))) / (dz_up[i] + dz_down[i]) / ((DonorCell) ? (0.5) : (1.));
 		}
@@ -285,8 +268,8 @@ bool SalinityTransport::SolveSalinityTransportEquationImplicit(const double dt, 
 
 
 	// Add the terms from "out of boundary" advection
-	if(flux_down[0]<0 || !UpstreamBoundaries) b[0] += -f * (flux_down[0] * ((!DonorCell || flux_down[0]<0.) ? (BottomSalinity) : (0.*BrineSal[0]))) / (dz_up[0] + dz_down[0]) / ((DonorCell) ? (0.5) : (1.));
-	if(flux_up[NumberOfElements-1]>0 || !UpstreamBoundaries) b[NumberOfElements-1] += f * (flux_up[NumberOfElements-1] * ((!DonorCell || flux_up[NumberOfElements-1]>0.) ? (TopSalinity) : (0.*BrineSal[NumberOfElements-1]))) / (dz_up[NumberOfElements-1] + dz_down[NumberOfElements-1]) / ((DonorCell) ? (0.5) : (1.));
+	b[0] += -f * (flux_down[0] * ((!DonorCell || flux_down[0]<0.) ? (BottomSalinity) : (0.*BrineSal[0]))) / (dz_up[0] + dz_down[0]) / ((DonorCell) ? (0.5) : (1.));
+	b[NumberOfElements-1] += f * (flux_up[NumberOfElements-1] * ((!DonorCell || flux_up[NumberOfElements-1]>0.) ? (TopSalinity) : (0.*BrineSal[NumberOfElements-1]))) / (dz_up[NumberOfElements-1] + dz_down[NumberOfElements-1]) / ((DonorCell) ? (0.5) : (1.));
 
 
 	// Dump solver info on stdout
@@ -375,8 +358,7 @@ bool SalinityTransport::SolveSalinityTransportEquationExplicit(const double dt, 
 	// Declare vectors
 	std::vector<double> b(NumberOfElements, 0.);		// Solution vector
 
-	if((ZeroFluxUpperBoundary_advection_in && flux_up[NumberOfElements-1] > 0.)
-		|| (ZeroFluxUpperBoundary_advection_out && flux_up[NumberOfElements-1] < 0.)) flux_up[NumberOfElements-1] = 0.;
+	if(ZeroFluxUpperBoundary_advection) flux_up[NumberOfElements-1] = 0.;
 	if(ZeroFluxLowerBoundary_advection) flux_down[0] = 0.;
 
 	// Fill matrix and r.h.s. vector
@@ -459,10 +441,10 @@ bool SalinityTransport::VerifyCFL(const double dt)
 //		const double tmp_flux_2 = (flux_up_2[i] * dz_up[i] + flux_down_2[i] * dz_down[i]) / (dz_up[i] + dz_down[i]);
 //		if (tmp_flux * dt / std::min(dz_up[i], dz_down[i]) > CFL_limit) {printf("FAIL1@%d ", int(i)); return false;}
 //		if (tmp_flux_2 * dt / std::min(dz_up[i], dz_down[i]) > CFL_limit) {printf("FAIL2@%d ", int(i)); return false;}
-		if (std::max( fabs(flux_up[i]) , fabs(flux_down[i]) ) * (dt / (std::min(dz_up[i], dz_down[i]))) > CFL_limit) {printf("Criterion 1 @%d ", int(i)); return false;}
-		if (std::max( fabs(flux_up_2[i]) , fabs(flux_down_2[i]) ) * (dt / (std::min(dz_up[i], dz_down[i]))) > CFL_limit) {printf("Criterion 2 @%d ", int(i)); return false;}
+		if (std::max( fabs(flux_up[i]) , fabs(flux_down[i]) ) * (dt / (std::min(dz_up[i], dz_down[i]))) > CFL_limit) {printf("FAIL4A@%d ", int(i)); return false;}
+		if (std::max( fabs(flux_up_2[i]) , fabs(flux_down_2[i]) ) * (dt / (std::min(dz_up[i], dz_down[i]))) > CFL_limit) {printf("FAIL4B@%d ", int(i)); return false;}
 		// Check CFL for diffusion
-		if (D[i] * theta1[i] * dt / (std::min(dz_up[i], dz_down[i]) * std::min(dz_up[i], dz_down[i])) > CFL_limit) {printf("Criterion 3 @%d ", int(i)); return false;}
+		if (D[i] * theta1[i] * dt / (std::min(dz_up[i], dz_down[i]) * std::min(dz_up[i], dz_down[i])) > CFL_limit) {printf("FAIL3@%d ", int(i)); return false;}
 	}
 	return true;
 }
@@ -479,11 +461,11 @@ bool SalinityTransport::VerifyImplicitDt(const double dt)
 	const double limit = 0.999;
 	for(size_t i = 0; i < NumberOfElements; i++) {
 		// Check advection
-		if (std::max( fabs(flux_up[i])/dz_up[i] , fabs(flux_down[i]/dz_down[i]) ) * dt > limit) {printf("Criterion 4 @%d ", int(i)); return false;}
-		if (std::max( fabs(flux_up_2[i])/dz_up[i] , fabs(flux_down_2[i]/dz_down[i]) ) * dt > limit) {printf("Criterion 5 @%d ", int(i)); return false;}
+		if (std::max( fabs(flux_up[i])/dz_up[i] , fabs(flux_down[i]/dz_down[i]) ) * dt > limit) {printf("FAIL4A@%d ", int(i)); return false;}
+		if (std::max( fabs(flux_up_2[i])/dz_up[i] , fabs(flux_down_2[i]/dz_down[i]) ) * dt > limit) {printf("FAIL4B@%d ", int(i)); return false;}
 		// Check diffusion
 		if (i!=0 && D[i] * theta1[i] * dt / (std::min(dz_up[i], dz_down[i]) * std::min(dz_up[i], dz_down[i])) > limit) {printf("FAIL5@%d ", int(i)); return false;}
-		if (i==0 && D[i] * dt / (std::min(dz_up[i], dz_down[i]) * std::min(dz_up[i], dz_down[i])) > limit) {printf("Criterion 6 @%d ", int(i)); return false;}
+		if (i==0 && D[i] * dt / (std::min(dz_up[i], dz_down[i]) * std::min(dz_up[i], dz_down[i])) > limit) {printf("FAIL6@%d ", int(i)); return false;}
 	}
 	return true;
 }

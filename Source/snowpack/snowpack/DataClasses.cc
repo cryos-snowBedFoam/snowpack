@@ -2039,7 +2039,7 @@ SnowStation::SnowStation(const bool i_useCanopyModel, const bool i_useSoilLayers
 	Ndata(), Edata(), Kt(NULL), ColdContent(0.), ColdContentSoil(0.), dIntEnergy(0.), dIntEnergySoil(0.), meltFreezeEnergy(0.), meltFreezeEnergySoil(0.), meltMassTot(0.), refreezeMassTot(0.),
 	ReSolver_dt(-1), windward(false),
 	WindScalingFactor(1.), TimeCountDeltaHS(0.),
-	nNodes(0), nElems(0), maxElementID(0), useCanopyModel(i_useCanopyModel), useSoilLayers(i_useSoilLayers), isAlpine3D(i_isAlpine3D),elementTrackingCounter(0.)
+	nNodes(0), nElems(0), maxElementID(0), useCanopyModel(i_useCanopyModel), useSoilLayers(i_useSoilLayers), isAlpine3D(i_isAlpine3D), elementTrackingCounter(0.)
 {
 	if (i_useSeaIceModule)
 		Seaice = new SeaIce;
@@ -2509,7 +2509,6 @@ void SnowStation::initialize(const SN_SNOWSOIL_DATA& SSdata, const size_t& i_sec
 	Ndata.front().z = 0.;
 	Ndata.front().T = (SSdata.nLayers > 0)? SSdata.Ldata.front().tl : Constants::meltfreeze_tk;
 	Ndata.front().rhov = Atmosphere::waterVaporDensity(Ndata.front().T, Atmosphere::vaporSaturationPressure(Ndata.front().T));
-
 	Ndata.front().u = 0.;
 	Ndata.front().f = 0.;
 	Ndata.front().udot = 0.;
@@ -3948,7 +3947,7 @@ const std::string LayerData::toString() const
 	os << "" << phiSoil << " soil, total = " << phiIce+phiWater+phiWaterPref+phiVoids+phiSoil << "%\n";
 	os << "\tSoil properties: " << SoilRho << " kg/m^3, " << SoilK << " W/(m*K), " << SoilC << " J/K\n";
 	os << "\tSoil microstructure: rg=" << rg << " sp=" << sp << " dd=" << dd << " rb=" << rb << " mk=" << mk << "\n";
-	os << "\tStability: surface hoar=" << hr << " kg/m^2, stress rate=" << CDot << " Pa/s, metamo=" << metamo << "dsm=" << dsm << Rho_cum_snow << "\n"; // Jafari added Rho_cum_snow in case of water vapor transport and ENABLE_VAPOUR_RESTART
+	os << "\tStability: surface hoar=" << hr << " kg/m^2, stress rate=" << CDot << " Pa/s, metamo=" << metamo << "dsm=" << dsm << "Rho_cum_snow=" << Rho_cum_snow << "\n"; // Jafari added Rho_cum_snow in case of water vapor transport and ENABLE_VAPOUR_RESTART
 	os << "\tNumber of solutes: " << cSoil.size() << " in soil, " << cIce.size() << " in ice, " << cWater.size() << " in water, " << cVoids.size() << " in voids\n";
 
 	os << "</LayerData>\n";

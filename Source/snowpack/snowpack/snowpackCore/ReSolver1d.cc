@@ -1586,6 +1586,7 @@ void ReSolver1d::SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata,
 						if(aBottomBC==DIRICHLET && i==lowernode) {
 							adu[i]=0.;
 						}
+
 						// Prevent degenerate case
 						if(ad[i]==0. && adl[i-1]==0. && adu[i]==0.) {
 							ad[i]=1.;

@@ -1153,15 +1153,7 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 		const double meltfreeze_tk = (Xdata.getNumberOfElements()>0)? Xdata.Edata[Xdata.getNumberOfElements()-1].meltfreeze_tk : Constants::meltfreeze_tk;
 		const bool isSurfaceMelting = !(NDS[nE].T < meltfreeze_tk);
 
-		//(1) compTopFlux deals with the top flux for the bucket water transport scheme not for Richards...
-		//(2) if we do it like the first diffusive paper, we just use this if block here....
-		//(3) we can use the leftover for waterTransport, in this case ql should not be forced to zero and be used here in any case 
-		//  , but we should use it in Richard solver for evaporation and condenstion as:
-		//if(enable_vapour_transport) {
-		//	RichardsEquationSolver1d_matrix.SolveRichardsEquation(Xdata, Sdata, dummy_ql, Mdata.date);
-		//} else {
-			RichardsEquationSolver1d_matrix.SolveRichardsEquation(Xdata, Sdata, ((isTopLayerSolvedByREQ && isSurfaceMelting) || (variant == "SEAICE" && ql < 0.)) ? (ql) : (dummy_ql), Mdata.date);
-		//}
+		RichardsEquationSolver1d_matrix.SolveRichardsEquation(Xdata, Sdata, ((isTopLayerSolvedByREQ && isSurfaceMelting) || (variant == "SEAICE" && ql < 0.)) ? (ql) : (dummy_ql), Mdata.date);
 
 		if(Xdata.getNumberOfElements() > Xdata.SoilNode && enable_pref_flow) RichardsEquationSolver1d_pref.SolveRichardsEquation(Xdata, Sdata, dummy_ql, Mdata.date);	// Matrix flow will take care of potential evaporation/condensation, provided by ql, so send dummy_ql for preferential flow
 	}
@@ -1306,14 +1298,8 @@ void WaterTransport::compTransportMass(const CurrentMeteo& Mdata,
 		return;
 	}
 
-	//if (!enable_vapour_transport) { // can be changed by commenting this if-block	
-		compTopFlux(ql, Xdata, Sdata); 
-		//(1) compTopFlux deals with the top flux for the bucket water transport scheme not for Richards...
-		//(2) if we do it like the first diffusive paper, we just use this if block here....
-		//(3) we can use the leftover for waterTransport, in this case ql should not be forced to zero and be used here in any case, but we should use it 
-		//	   in Richard solver for evaporation and condenstion
-		
-	//}	
+
+	compTopFlux(ql, Xdata, Sdata); 
 	mergingElements(Xdata, Sdata);
 
 	try {

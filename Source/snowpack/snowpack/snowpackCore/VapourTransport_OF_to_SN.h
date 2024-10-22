@@ -77,5 +77,7 @@ class VapourTransport_OF_to_SN : public WaterTransport {
 		double height_of_meteo_values;
 		
 		bool adjust_height_of_meteo_values;
+		
+		bool enable_vapour_transport;
 };
 #endif // End of VapourTransport_OF_to_SN_OF_to_SN.h}

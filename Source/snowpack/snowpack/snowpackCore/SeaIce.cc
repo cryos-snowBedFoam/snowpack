@@ -306,11 +306,9 @@ void SeaIce::compFlooding(SnowStation& Xdata, SurfaceFluxes& Sdata)
 		Xdata.Edata[iN].theta[AIR] -= dth_w;
 		Xdata.Edata[iN].salinity += SeaIce::OceanSalinity * dth_w;
 		Xdata.Edata[iN].salinity = std::min(SeaIce::OceanSalinity, Xdata.Edata[iN].salinity);
-
 		Sdata.mass[SurfaceFluxes::MS_FLOODING]-=Xdata.Edata[iN].Rho * Xdata.Edata[iN].L;
 		Xdata.Edata[iN].updDensity();
 		Sdata.mass[SurfaceFluxes::MS_FLOODING]+=Xdata.Edata[iN].Rho * Xdata.Edata[iN].L;
-
 		Xdata.Edata[iN].M = Xdata.Edata[iN].Rho * Xdata.Edata[iN].L;
 		calculateMeltingTemperature(Xdata.Edata[iN]);
 		iN++;
@@ -474,6 +472,7 @@ void SeaIce::ApplyBottomIceMassBalance(SnowStation& Xdata, const CurrentMeteo& M
 	if ( dM > 0 ) {
 		// dM > 0: mass gain
 		if ( nE == 0 || EMS[Xdata.SoilNode].Rho < ice_threshold ) {
+
 			const double dH = dM / SeaIceDensity;								// Total height to be added. Note that dM represents the amount of ice resulting from the phase changes from the energy balance at the bottom of the ice.
 			const size_t nAddE = 1;										// Number of elements
 			const double dL = (dH / double(nAddE));								// Height of each individual layer
@@ -504,6 +503,7 @@ void SeaIce::ApplyBottomIceMassBalance(SnowStation& Xdata, const CurrentMeteo& M
 				EMS[Xdata.SoilNode].updDensity();
 				Sdata.mass[SurfaceFluxes::MS_ICEBASE_MELTING_FREEZING]+=dM;
 
+
 				for (unsigned short ii = 0; ii < Xdata.number_of_solutes; ii++) {
 					EMS[Xdata.SoilNode].conc[ICE][ii]   = Mdata.conc[ii]*Constants::density_ice/Constants::density_water;
 					EMS[Xdata.SoilNode].conc[WATER][ii] = Mdata.conc[ii];
@@ -526,11 +526,9 @@ void SeaIce::ApplyBottomIceMassBalance(SnowStation& Xdata, const CurrentMeteo& M
 				EMS[Xdata.SoilNode].rb = InitRb;
 				EMS[Xdata.SoilNode].N3 = Metamorphism::getCoordinationNumberN3(EMS[Xdata.SoilNode].Rho);
 				EMS[Xdata.SoilNode].opticalEquivalentGrainSize();
-
 				EMS[Xdata.SoilNode].mk = 7;
 				EMS[Xdata.SoilNode].metamo = 0.;
 				EMS[Xdata.SoilNode].snowType(); // Snow classification
-
 				EMS[Xdata.SoilNode].dth_w = 0.;
 				EMS[Xdata.SoilNode].Qmf = 0.;
 				EMS[Xdata.SoilNode].QIntmf = 0.;
@@ -542,7 +540,6 @@ void SeaIce::ApplyBottomIceMassBalance(SnowStation& Xdata, const CurrentMeteo& M
 				EMS[Xdata.SoilNode].s_strength = 0.;
 				EMS[Xdata.SoilNode].hard = 0.;
 				EMS[Xdata.SoilNode].S_dr = IOUtils::nodata;
-
 				EMS[Xdata.SoilNode].crit_cut_length = Constants::undefined;
 				EMS[Xdata.SoilNode].VG.theta_r = 0.;
 				EMS[Xdata.SoilNode].lwc_source = 0.;

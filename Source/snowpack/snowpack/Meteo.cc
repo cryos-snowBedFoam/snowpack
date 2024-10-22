@@ -231,29 +231,34 @@ void Meteo::MOStability(const ATM_STABILITY& use_stability, const double& ta_v, 
 					- 1. * dummy2 - 0.3 * Optim::pow3(dummy2) + 1.2804;
 			return;
 			}
+
 			case MO_LOG_LINEAR: {
 			//log_linear
 			psi_m = psi_s = -5.* stab_ratio;
 			return;
 			}
+
 			case MO_SCHLOEGL_UNI: {
 			//schloegl univariate: bin univariate 2/3 datasets
 			psi_m = -1.62 * stab_ratio;
 			psi_s = -2.96 * stab_ratio;
 			return;
 			}
+
 			case MO_SCHLOEGL_MULTI: {
 			//All multivariate 2/3 without offset
 			psi_m = - 65.35 *(ta_v - t_surf_v)/(0.5 * (ta_v + t_surf_v)) + 0.0017 * zref * Constants::g/pow(vw,2);
 			psi_s = - 813.21 *(ta_v - t_surf_v)/(0.5 *(ta_v + t_surf_v)) - 0.0014 * zref * Constants::g/pow(vw,2);
 			return;
 			}
+
 			case MO_SCHLOEGL_MULTI_OFFSET: {
 			//All multivariate 2/3 with offset
 			psi_m = -0.69 - 15.47 * (ta_v - t_surf_v)/(0.5 * (ta_v + t_surf_v)) + 0.0059 * zref * Constants::g/pow(vw,2);
 			psi_s = 6.73 -688.18 * (ta_v - t_surf_v)/(0.5 * (ta_v + t_surf_v)) - 0.0023 * zref * Constants::g/pow(vw,2);
 			return;
 			}
+
 			default:
 			throw InvalidArgumentException("Unsupported atmospheric stability parametrization", AT);
 		}
@@ -333,6 +338,7 @@ void Meteo::MicroMet(const SnowStation& Xdata, CurrentMeteo &Mdata, const bool& 
 	do {
 		iter++;
 		ustar_old = ustar;
+
 		// Stability corrections: compute ustar, psi_s & potentially psi_m
 		if (stability==RICHARDSON) {
 			RichardsonStability(ta_v, t_surf_v, zref, vw, z_ratio, ustar, psi_s); //compute ustar & psi_s

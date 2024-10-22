@@ -1543,9 +1543,6 @@ void Snowpack::fillNewSnowElement(const CurrentMeteo& Mdata, const double& lengt
 	double p_vapor = Atmosphere::vaporSaturationPressure(elem.Te);
 	elem.rhov = Atmosphere::waterVaporDensity(elem.Te, p_vapor);
 
-	// J added updating parameters for SNOWPACK-OpenFOAM
-	//elem.SN_to_OF_deltaTheta_ice-=elem.theta[ICE];
-	//elem.SN_to_OF_deltaTheta_water-=elem.theta[WATER];
 	elem.OF_to_SN_Tm=t_surf; // J added to avoid not-set temperature 
 }
 
@@ -1933,19 +1930,15 @@ void Snowpack::compSnowFall(const CurrentMeteo& Mdata, SnowStation& Xdata, doubl
 			double z0 = NDS[nOldN-1+nHoarE].z + NDS[nOldN-1+nHoarE].u + Ln; // Position of lowest new node
 			for (size_t n = nOldN+nHoarE; n < nNewN; n++) { //loop over the nodes
 				NDS[n].T = t_surf;                  // Temperature of the new node
-
 				double p_vapor = Atmosphere::vaporSaturationPressure(NDS[n].T);
 				NDS[n].rhov = Atmosphere::waterVaporDensity(NDS[n].T, p_vapor);
-
 				NDS[n].z = z0;                      // New nodal position
 				NDS[n].u = 0.0;                     // Initial displacement is 0
 				NDS[n].hoar = 0.0;                  // The new snow surface hoar is set to zero
 				NDS[n].udot = 0.0;                  // Settlement rate is also 0
 				NDS[n].f = 0.0;                     // Unbalanced forces are 0
-
 				NDS[n].S_n = IOUtils::nodata;
 				NDS[n].S_s = IOUtils::nodata;
-
 				z0 += Ln;
 			}
 
@@ -1953,7 +1946,6 @@ void Snowpack::compSnowFall(const CurrentMeteo& Mdata, SnowStation& Xdata, doubl
 			for (size_t e = nOldE; e < nNewE; e++) { //loop over the elements
 
 				EMS[e].elementIDTracking=Xdata.elementTrackingCounter+e-nOldE;				
-
 				const bool is_surface_hoar = (nHoarE && (e == nOldE));
 				const double length = (NDS[e+1].z + NDS[e+1].u) - (NDS[e].z + NDS[e].u);
 				const double density = (is_surface_hoar)? hoar_density_buried : rho_hn;
@@ -1977,8 +1969,8 @@ void Snowpack::compSnowFall(const CurrentMeteo& Mdata, SnowStation& Xdata, doubl
 				Xdata.ColdContent += EMS[e].coldContent(); //update cold content
 
 				// J added updating parameters for SNOWPACK-OpenFOAM
-				EMS[e].SN_to_OF_deltaTheta_ice-=EMS[e].theta[ICE]; // after het---we do not need as new element is initialized zero and we do not use this one
-				EMS[e].SN_to_OF_deltaTheta_water-=EMS[e].theta[WATER]; // after het---we do not need as new element is initialized zero and we do not use this one
+				EMS[e].SN_to_OF_deltaTheta_ice-=EMS[e].theta[ICE]; 
+				EMS[e].SN_to_OF_deltaTheta_water-=EMS[e].theta[WATER];
 			}   // End elements
 			
 			Xdata.elementTrackingCounter+=nNewE-nOldE; //The counter for element tracking for making comparison of any snow properties between two simulation (-)			
@@ -2157,18 +2149,7 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 		Bdata.reset();
 		updateBoundHeatFluxes(Bdata, Xdata, Mdata);		
 		double ql = Bdata.ql;	// Variable to keep track of how latent heat is used...
-		VapourTransport_OF_to_SN.compTransportMass(Mdata, ql, Xdata, Sdata);
-		/*
-		for(size_t i=0; i<Xdata.getNumberOfElements(); i++)
-		{
-			Xdata.Edata[i].SN_to_OF_deltaTheta_ice=0.0;
-			Xdata.Edata[i].SN_to_OF_deltaTheta_water=0.0;
-		}
-		for(size_t i=Xdata.SoilNode; i<Xdata.getNumberOfElements(); i++)
-		{
-			Xdata.Edata[i].SN_to_OF_deltaTheta_ice-=Xdata.Edata[i].theta[ICE];
-			Xdata.Edata[i].SN_to_OF_deltaTheta_water-=Xdata.Edata[i].theta[WATER];
-		}*/				
+		VapourTransport_OF_to_SN.compTransportMass(Mdata, ql, Xdata, Sdata);				
 /////////////////////////OF-SN coupleing///////////////////////////
 
 		// Set and adjust boundary conditions
@@ -2385,12 +2366,10 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 		// and creep solution routines will not pick up the new mesh boolean.
 
 		//double ql = Bdata.ql;	// Variable to keep track of how latent heat is used...Jafari moved this to the front, so it should be commented.
+		watertransport.compTransportMass(Mdata, Xdata, Sdata, ql);
 		
-		const double surfaceVaporPressure = Atmosphere::vaporSaturationPressure(t_surf); //Jafari added: this is not needed any more as we have  and was commented
-		vapourtransport.compTransportMass(Mdata, ql, Xdata, Sdata, surfaceVaporPressure);//Jafari added: this is not needed any more as we have  and was commented	
-		/*
-		VapourTransport_OF_to_SN.compTransportMass(Mdata, ql, Xdata, Sdata, surfaceVaporPressure);		
-		*/ // Jafari moved this to the front ....
+		vapourtransport.compTransportMass(Mdata, ql, Xdata, Sdata);
+		//VapourTransport_OF_to_SN.compTransportMass(Mdata, ql, Xdata, Sdata); // Jafari moved this to the front ....
 
 		// See if any SUBSURFACE phase changes are occuring due to updated water content (infiltrating rain/melt water in cold snow layers)
 		if(!coupled_phase_changes) {

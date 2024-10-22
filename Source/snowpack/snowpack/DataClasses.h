@@ -210,10 +210,8 @@ class LayerData {
 		double tl;                  ///< Temperature at the top of the layer in K
 		double phiSoil;             ///< Volumetric soil content in %
 		double phiIce;              ///< Volumetric ice content in %
-
 		double phiIceReservoir;     ///< Volumetric ice reservoir content in %
 		double phiIceReservoirCumul;///< Volumetric cumulated ice reservoir content in %
-
 		double phiWater;            ///< Volumetric water content in %
 		double phiWaterPref;        ///< Volumetric preferential water content in %
 		double phiVoids;            ///< Volumetric void content in %
@@ -232,7 +230,6 @@ class LayerData {
 		double hr;                  ///< Surface hoar Mass in kg m-2
 		double CDot;                ///< Stress rate (Pa s-1), that is the LAST overload change rate
 		double metamo;              ///< keep track of metamorphism
-
 		double Rho_cum_snow;                   // Jafari added Rho_cum_snow in case of water vapor transport and ENABLE_VAPOUR_RESTART		
 		double salinity;            ///< bulk salinity (g/kg)
 		double h;                   ///< capillary pressure head (m)
@@ -312,9 +309,7 @@ class ElementData {
 
 		ElementData(const unsigned short int& in_ID);
 		ElementData(const ElementData& cc); //required to get the correct back-reference in vanGenuchten object
-
 		ElementData(const ElementData& cc1, const ElementData& cc2, const double w1); //Jafari added for OF-SN coupling
-
 		ElementData& operator=(const ElementData&) = default; ///<Assignement operator
 
 		bool checkVolContent();

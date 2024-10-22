@@ -44,13 +44,20 @@ class SnowDrift {
 		static const double schmidt_drift_fudge;
 
  	private:
-		double compMassFlux(const ElementData& Edata, const double& ustar, const double& slope_angle) const;
+		static double get_tau_thresh(const ElementData& Edata);
+		static double get_ustar_thresh(const ElementData& Edata);
+		double compMassFlux(const std::vector<ElementData>& EMS, const double& ustar, const double& slope_angle) const;
 
 		const Saltation saltation; // The saltation model used
-		const bool enforce_measured_snow_heights, snow_redistribution, snow_erosion; // Will be read from cfg object
+		const bool enforce_measured_snow_heights, snow_redistribution; // Will be read from cfg object
+		const std::string snow_erosion;
 		const bool alpine3d; ///< triggers various tricks for Alpine3D (including reducing the number of warnings)
 		const double sn_dt;        //Calculation time step in seconds as derived from CALCULATION_STEP_LENGTH
+		const double fetch_length;
+		const double erosion_limit;
 		static const bool msg_erosion;
+		static const double redeposit_avg_depth;
+		std::string forcing;
 }; //End class SnowDrift
 
 #endif

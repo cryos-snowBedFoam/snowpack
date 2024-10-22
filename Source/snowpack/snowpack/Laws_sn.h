@@ -70,12 +70,13 @@ class SnLaws {
 
 		static double compSensibleHeatCoefficient(const CurrentMeteo& Mdata, const SnowStation& Xdata,
 		                                          const double& height_of_meteo_values);
-		static double compLatentHeat_Rh(const Snowpack::soil_evap_model soil_evaporation, const CurrentMeteo& Mdata, SnowStation& Xdata,
+		static double compLatentHeat_Rh(const std::string soil_evaporation, const CurrentMeteo& Mdata, SnowStation& Xdata,
 		                                const double& height_of_meteo_values);
-		static double compLatentHeat(const Snowpack::soil_evap_model soil_evaporation, const CurrentMeteo& Mdata, SnowStation& Xdata,
+		static double compLatentHeat(const std::string soil_evaporation, const CurrentMeteo& Mdata, SnowStation& Xdata,
 		                             const double& height_of_meteo_values);
 
-		static double compSoilThermalConductivity(const ElementData& Edata, const double& dvdz);
+		static double compSoilThermalConductivity(const ElementData& Edata, const double& dvdz,
+		                                          const std::string& soil_thermal_conductivity);
 
 		static double soilVaporDiffusivity(const ElementData& Edata);
 		static double compEnhanceWaterVaporTransportSoil(const ElementData& Edata,const double& clay_fraction);
@@ -83,6 +84,7 @@ class SnLaws {
 		static double compSoilIsothermalVaporConductivity(const ElementData& Edata_bot, const ElementData& Edata_top, const double& Te_bot, const double& Te_top, const double& T_node);
 
 		static double compSnowThermalConductivity(const ElementData& Edata, const double& dvdz, const bool& show_warnings=true);
+
 		static double compSnowThermalConductivity_airEff(const ElementData& Edata, const double& dvdz, const bool& show_warnings=true);
 		static double compSnowThermalConductivity_waterEff(const ElementData& Edata, const double& dvdz, const bool& show_warnings=true);
 		static double compSnowThermalConductivity_iceEff(const ElementData& Edata, const double& dvdz, const bool& show_warnings=true);
@@ -98,7 +100,8 @@ class SnLaws {
 		static double compLWRadCoefficient(const double& t_snow, const double& t_atm, const double& e_atm);
 
 		static double parameterizedSnowAlbedo(const std::string& i_albedo, const std::string& i_albedo_parameterization, const std::string& i_albAverageSchmucki, const double& i_albNIED_av,
-		                                      const double& i_hn_albedo_fixedValue, const ElementData& Edata, const double& Tss, const CurrentMeteo& Mdata, const bool& ageAlbedo=true);
+		                                      const double& i_hn_albedo_fixedValue, const ElementData& Edata, const double& Tss, const CurrentMeteo& Mdata, const SnowStation& Xdata, const bool& ageAlbedo=true);
+
 		static void compShortWaveAbsorption(const std::string& i_sw_absorption_scheme, SnowStation& Xdata, const double& I0);
 		static void compAdvectiveHeat(SnowStation& Xdata, const double& advective_heat,
 		                                                  const double& depth_begin, const double& depth_end);
@@ -124,7 +127,8 @@ class SnLaws {
 		static double snowViscosityCALIBRATION(ElementData& Edata, const mio::Date& date);
 		// minimum observed air emissivity: default=0.55 (from 1993 data at Weissfluhjoch) - Antarctica=0.31 (from 2006/2007 data of Dome C)
 		static double AirEmissivity(mio::MeteoData& md, const std::string& variant);
-		static double AirEmissivity(const double& ilwr, const double& ta, const std::string& variant);
+		static double AirEmissivity(const double& ilwr, const double& ta, const std::string& variant, const bool& max_limit=true);
+
 		static double ArrheniusLaw(const double ActEnergy, const double T, const double T_ref);
 
 		static double min_hn_density, max_hn_density, event_wind_lowlim;

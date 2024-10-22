@@ -63,7 +63,7 @@ using namespace mio;
  *                            - mk < 10, mk=mk+10 : first complete wetting
  *                            - mk < 20, mk=mk+10 : first melt-freeze cycle completed
  *                            - mk / 100 >= 1     : tagged snow layer
- *                            - mk / 1000 >= 9    : marked reference level to reference height of wind and meteo values, as well as measured snow height 
+ *                            - mk / 1000 >= 9    : marked reference level to reference height of wind and meteo values, as well as measured snow height
  *
  * SECONDARY micro-structure parameters computed by Metamorphism routine:
  * - N3   : coordination number (1)
@@ -113,10 +113,10 @@ const double Metamorphism::max_grain_bond_ratio = 0.95;
 const double Metamorphism::wind_slab_enhance = 5.;
 
 ///Wind slab forms for winds stronger than Metamorphism::wind_slab_vw (m s-1)
-const double Metamorphism::wind_slab_vw = 5.; //MJ warn...this was 5. and changed
+const double Metamorphism::wind_slab_vw = 5.;
 
 /// Wind slab formation down to Metamorphism::wind_slab_depth (m)
-const double Metamorphism::wind_slab_depth = 0.07; //MJ warn...this was 0.07 and changed
+const double Metamorphism::wind_slab_depth = 0.07;
 //@}
 
 
@@ -226,28 +226,35 @@ double Metamorphism::ddRate(const ElementData& Edata)
  * non-static section                                       *
  ************************************************************/
 
-static std::string get_model(const SnowpackConfig& cfg) 
+static std::string get_model(const SnowpackConfig& cfg)
 {
 	std::string model;
 	cfg.getValue("METAMORPHISM_MODEL", "SnowpackAdvanced", model);
 	return model;
 }
 
-static double get_sn_dt(const SnowpackConfig& cfg) 
+static std::string get_variant(const SnowpackConfig& cfg)
+{
+	std::string variant;
+	cfg.getValue("VARIANT", "SnowpackAdvanced", variant);
+	return variant;
+}
+
+static double get_sn_dt(const SnowpackConfig& cfg)
 {
 	//Calculation time step in seconds as derived from CALCULATION_STEP_LENGTH
 	const double calculation_step_length = cfg.get("CALCULATION_STEP_LENGTH", "Snowpack");
 	return M_TO_S(calculation_step_length);
 }
 
-static double get_nsgs(const SnowpackConfig& cfg) 
+static double get_nsgs(const SnowpackConfig& cfg)
 {
 	const double nsgs = cfg.get("NEW_SNOW_GRAIN_SIZE", "SnowpackAdvanced");
 	return nsgs;
 }
 
 Metamorphism::Metamorphism(const SnowpackConfig& cfg)
-              : metamorphism_model( get_model(cfg) ), sn_dt( get_sn_dt(cfg) ), new_snow_grain_size( get_nsgs(cfg) )
+              : metamorphism_model( get_model(cfg) ), variant( get_variant(cfg) ), sn_dt( get_sn_dt(cfg) ), new_snow_grain_size( get_nsgs(cfg) )
 {
 	const map<string, MetaModelFn>::const_iterator it1 = mapMetamorphismModel.find(metamorphism_model);
 	if (it1 == mapMetamorphismModel.end())
@@ -574,15 +581,6 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 		rgDotMax = std::max(0.0, rgDotMax);
 		rbDotMax = TGBondRate(EMS[e]);
 
-// for SML
-/*
-		if (NDS[e+1].z <= 3.07){// IG : <=3.07 m corresponds to the grass layer of 7 cm (NDS includes soil depth of 3m here)
-			rgDotMax = std::max(0.0, 5*rgDotMax);// IG : add x5
-			rbDotMax = 5*TGBondRate(EMS[e]);// IG : add x5
-		 }
-*/
-// for SML
-
 		if ( (EMS[e].theta[WATER] < 0.01) && (Mdata.vw > Metamorphism::wind_slab_vw) && ((NDS[nE].z - NDS[e].z < Metamorphism::wind_slab_depth) || e == nE-1) ) {
 			//if snow is dry AND wind strong AND we are near the surface => wind densification of snow
 			// Introduce heuristic metamorphism for wind slabs of Metamorphism::wind_slab_depth (m)
@@ -707,7 +705,7 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 				EMS[e].mk += 2;  // grains become fully rounded
 			}
 			// An ice layer forms in the snowpack for dry densities above 700 kg m-3!
-			if ((EMS[e].theta[ICE] > 0.763) && ((marker % 10 != 7) || (marker % 10 != 8))) {
+			if ((EMS[e].theta[ICE] > 0.763) && marker % 10 != 7 && marker % 10 != 8 ) {
 				EMS[e].mk = (EMS[e].mk / 10) * 10 + 8;
 			}
 		}
@@ -725,6 +723,23 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 		// Check for first complete melt-freeze cycle
 		else if ((marker < 20) && (marker >= 10) && (EMS[e].Te < EMS[e].meltfreeze_tk - 0.3)) {
 			EMS[e].mk += 10;
+		}
+
+		if (variant == "POLAR" || variant == "ANTARCTICA") {
+			// Some ad-hoc modifications for better settling behaviour with depth
+			double age = Mdata.date.getJulian() - EMS[e].depositionDate.getJulian(); // layer age in days
+			if (age > 365.) {
+				if ((EMS[e].mk % 100) > 20) {
+					EMS[e].mk -= 10;
+				}
+				if ((EMS[e].mk % 100) > 10) {
+					EMS[e].mk -= 10;
+				}
+				if (EMS[e].theta[ICE] > .6) {	// Above 550 kg/m3 dry density, we set microstructure to rounded
+					EMS[e].sp = 1.;
+					if (EMS[e].mk%10==1) EMS[e].mk++;
+				}
+			}
 		}
 
 		EMS[e].snowType();

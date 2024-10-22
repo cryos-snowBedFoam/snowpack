@@ -70,9 +70,10 @@ static double get_sn_dt(const SnowpackConfig& cfg)
 PhaseChange::PhaseChange(const SnowpackConfig& cfg)
              : iwatertransportmodel_snow(BUCKET), iwatertransportmodel_soil(BUCKET),
                watertransportmodel_snow("BUCKET"), watertransportmodel_soil("BUCKET"),
+               forcing("ATMOS"),
                sn_dt( get_sn_dt(cfg) ), cold_content_in(IOUtils::nodata), cold_content_soil_in(IOUtils::nodata),
                cold_content_out(IOUtils::nodata), cold_content_soil_out(IOUtils::nodata),
-	       alpine3d( get_bool(cfg, "ALPINE3D", "SnowpackAdvanced") ), t_crazy_min( get_double(cfg, "T_CRAZY_MIN", "SnowpackAdvanced") ), t_crazy_max( get_double(cfg, "T_CRAZY_MAX", "SnowpackAdvanced") ), max_theta_ice(1.)
+	       alpine3d( get_bool(cfg, "ALPINE3D", "SnowpackAdvanced") ), t_crazy_min( get_double(cfg, "T_CRAZY_MIN", "SnowpackAdvanced") ), t_crazy_max( get_double(cfg, "T_CRAZY_MAX", "SnowpackAdvanced") ), max_theta_ice(1.), enable_ice_reservoir(false)
 {
 	//Water transport model snow
 	cfg.getValue("WATERTRANSPORTMODEL_SNOW", "SnowpackAdvanced", watertransportmodel_snow);
@@ -95,6 +96,12 @@ PhaseChange::PhaseChange(const SnowpackConfig& cfg)
 	} else if (watertransportmodel_soil=="RICHARDSEQUATION") {
 		iwatertransportmodel_soil=RICHARDSEQUATION;
 	}
+
+	cfg.getValue("FORCING", "Snowpack", forcing);
+
+	// Check for ice reservoir
+	cfg.getValue("ICE_RESERVOIR", "SnowpackAdvanced", enable_ice_reservoir);
+
 }
 
 void PhaseChange::reset()
@@ -124,7 +131,7 @@ void PhaseChange::reset()
  * @param *ql_Rest Latent heat flux balance (J m-2)
  */
 void PhaseChange::compSubSurfaceMelt(ElementData& Edata, const unsigned int nSolutes, const double& dt,
-                                     double& ql_Rest, const mio::Date& date_in)
+                                     double& ql_Rest, const mio::Date& date_in, double& mass_melt)
 {
 	const double T_melt=Edata.meltfreeze_tk;		// Retrieve melting temperature from ElementData
 
@@ -133,45 +140,77 @@ void PhaseChange::compSubSurfaceMelt(ElementData& Edata, const unsigned int nSol
 	 * Now see if any melting is going on -- this implies that (1) the temperature of the element
 	 * is above the melting temperature (2) there is something to melt and (3) there is enough
 	 * room to place the meltwater ...
-	*/
-	if (((Edata.Te < T_melt) && (ql_Rest < Constants::eps2))
+	 */
+	if (((Edata.Te < T_melt) && (ql_Rest < Constants::eps2) && (forcing=="ATMOS"))
 	        || (Edata.theta[ICE] <= 0.0) || (Edata.theta[WATER] >= PhaseChange::theta_s)) {
-		return;
+		return; // no melt with atmos forcing
+	} else if (((mass_melt < Constants::eps2) && (forcing=="MASSBAL"))
+	        || (Edata.theta[ICE] <= 0.0) || (Edata.theta[WATER] >= PhaseChange::theta_s)) {
+		Edata.Te = std::min(Edata.Te, T_melt);	// Considering the case that the element is above melting temperature, but mass_melt==0, so we are not "allowed" to apply melt.
+		return; // no melt with massbal forcing
 	} else {
-		double dT = T_melt - Edata.Te; // Edata.meltfreeze_tk - Te > 0
-		// Now we take into account that there might be some extra energy that could not
-		// be used by the element above because of complete melting
-		dT -= ql_Rest / (Edata.c[TEMPERATURE] * Edata.Rho * Edata.L);
-		if (dT > 0.) {
-			return;
-		}
-		// Determine the DECREASE in ice content and the INCREASE of water content
-		// Adapt A to compute mass changes
-		const double A = (Edata.c[TEMPERATURE] * Edata.Rho) / ( Constants::density_ice * Constants::lh_fusion );
-		double dth_i = A * dT; // change in volumetric ice content
-		double dth_w = - (Constants::density_ice / Constants::density_water) * dth_i; // change in volumetric water content
-		// It could happen that there is enough energy available to melt more ice than is present.
-		// You can only melt so much ice as is there ....
-		if ( (Edata.theta[ICE] + dth_i) < 0.0 ) {
-			dth_i = - Edata.theta[ICE];
-			dth_w = - (Constants::density_ice / Constants::density_water) * dth_i;
-			dT = dth_i / A;
-		}
-		// It could also be that you are trying to produce more water than is allowed.
-		if ( (Edata.theta[WATER] + dth_w) > PhaseChange::theta_s ) {
-			dth_w = PhaseChange::theta_s - Edata.theta[WATER];
-			dth_i = - (Constants::density_water / Constants::density_ice) * dth_w;
-			dT = dth_i / A;
-		}
-		// Reset element properties
-		Edata.Te += dT;
-		if (Edata.Te <= T_melt) {
+		double dth_i;
+		double dth_w;
+		if (forcing == "MASSBAL" && T_melt > Edata.Te) { // forced melt, when "normal" melt would not occur anymore (snowpack too cold)
+			mass_melt += ql_Rest / Constants::lh_fusion;
+			dth_i = - (mass_melt / (Constants::density_ice * Edata.L)); // dth_i must be negative defined !
+			dth_w = - (Constants::density_ice / Constants::density_water) * dth_i; // change in volumetric water content
+			// You can only melt so much ice as is there ....
+			if ( (Edata.theta[ICE] + dth_i) < 0.0 ) {
+				dth_i = - Edata.theta[ICE];
+				dth_w = - (Constants::density_ice / Constants::density_water) * dth_i;
+			}
+			// It could also be that you are trying to produce more water than is allowed.
+			if ( (Edata.theta[WATER] + dth_w) > PhaseChange::theta_s ) {
+				dth_w = PhaseChange::theta_s - Edata.theta[WATER];
+				dth_i = - (Constants::density_water / Constants::density_ice) * dth_w;
+			}
+			// Reset element properties
 			ql_Rest = 0.0;
-			Edata.Te = T_melt;
-		} else {
-			ql_Rest = Edata.c[TEMPERATURE] * Edata.Rho * Edata.L * (Edata.Te - T_melt);
-			Edata.Te = T_melt;
+			Edata.Te = Edata.meltfreeze_tk;
+		} else { // temperature induced ("normal") melt
+			double dT = T_melt - Edata.Te; // Edata.meltfreeze_tk - Te > 0
+			// Now we take into account that there might be some extra energy that could not
+			// be used by the element above because of complete melting
+			dT -= ql_Rest / (Edata.c[TEMPERATURE] * Edata.Rho * Edata.L);
+			if (dT > 0.) {
+				return;
+			}
+			// Determine the DECREASE in ice content and the INCREASE of water content
+			// Adapt A to compute mass changes
+			const double A = (Edata.c[TEMPERATURE] * Edata.Rho) / ( Constants::density_ice * Constants::lh_fusion );
+			dth_i = A * dT; // change in volumetric ice content
+			dth_w = - (Constants::density_ice / Constants::density_water) * dth_i; // change in volumetric water content
+			// It could happen that there is enough energy available to melt more ice than is present.
+			// You can only melt so much ice as is there ....
+			if ( (Edata.theta[ICE] + dth_i) < 0.0 ) {
+				dth_i = - Edata.theta[ICE];
+				dth_w = - (Constants::density_ice / Constants::density_water) * dth_i;
+				dT = dth_i / A;
+			}
+			// It could also be that you are trying to produce more water than is allowed.
+			if ( (Edata.theta[WATER] + dth_w) > PhaseChange::theta_s ) {
+				dth_w = PhaseChange::theta_s - Edata.theta[WATER];
+				dth_i = - (Constants::density_water / Constants::density_ice) * dth_w;
+				dT = dth_i / A;
+			}
+			// Treat the case for MASSBAL forcing where the melt in the element exceeds the prescribed melt
+			if (forcing == "MASSBAL" && dth_i < -(mass_melt / (Constants::density_ice * Edata.L))) {
+				dth_i = -(mass_melt / (Constants::density_ice * Edata.L));
+				dth_w = - (Constants::density_ice / Constants::density_water) * dth_i;
+				dT = dth_i / A;
+			}
+			// Reset element properties
+			Edata.Te += dT;
+			if (Edata.Te <= T_melt) {
+				ql_Rest = 0.0;
+				Edata.Te = T_melt;
+			} else {
+				ql_Rest = Edata.c[TEMPERATURE] * Edata.Rho * Edata.L * (Edata.Te - T_melt);
+				Edata.Te = T_melt;
+			}
 		}
+		mass_melt += (dth_i * Constants::density_ice * Edata.L); // update mass_melt (remove mass that was melted in the current layer)
 		Edata.Qmf += (dth_i * Constants::density_ice * Constants::lh_fusion) / dt; // (W m-3)
 		Edata.dth_w += dth_w; // (1)
 		for (unsigned int ii = 0; ii < nSolutes; ii++) {
@@ -283,6 +322,25 @@ void PhaseChange::compSubSurfaceFrze(ElementData& Edata, const unsigned int nSol
 		Edata.Qmf += (dth_i * Constants::density_ice * Constants::lh_fusion) / dt; // (W m-3)
 		Edata.dth_w += dth_w;
 		Edata.Te += dT;
+
+		// Treat here the ice reservoir
+		if (enable_ice_reservoir) {
+			if (-dth_w >= Edata.theta_w_transfer) { // The water frozen comes from both PF transfer and matrix water
+				const double theta_i_transfer = (Constants::density_water / Constants::density_ice) * Edata.theta_w_transfer; // Volumetric content of ice formed, coming from the PF transfer
+				Edata.theta[ICE] -= theta_i_transfer; // Take away the PF ice from matrix ice
+				Edata.theta_i_reservoir += theta_i_transfer; // Add the PF ice to the ice reservoir
+			} else { // All water from PF transfer does not freeze
+				const double theta_i_transfer = (Constants::density_water / Constants::density_ice) * (-dth_w); // Volumetric content of ice formed, coming from the PF transfer
+				Edata.theta[ICE] -= theta_i_transfer; // Take away the PF ice from matrix ice
+				Edata.theta_i_reservoir += theta_i_transfer; // Add the PF ice to the ice reservoir
+			}
+
+			// And check here for first wetting to set microstructural marker correctly, as not done in Resolver1d.cc
+			if ((Edata.theta[WATER] > 5E-6 * sn_dt) && (Edata.mk%100 < 10)) {
+				Edata.mk += 10;
+			}
+
+		}
 	}
 }
 
@@ -311,6 +369,10 @@ void PhaseChange::initialize(SnowStation& Xdata)
 	Xdata.dIntEnergy=0.;
 	Xdata.dIntEnergySoil=0.;
 
+	// Reset melt and refreeze mass
+	Xdata.meltMassTot = 0.;
+	Xdata.refreezeMassTot = 0.;
+
 	return;
 }
 
@@ -332,8 +394,8 @@ void PhaseChange::finalize(const SurfaceFluxes& Sdata, SnowStation& Xdata, const
 		// In the final step compute temperature and temperature gradient, check both density and mass balance
 		for (e = 0; e < nE; e++) {
 			//Restructure temperature arrays
-                        EMS[e].gradT = (NDS[e+1].T - NDS[e].T) / EMS[e].L;
-		        EMS[e].Te = (NDS[e].T + NDS[e+1].T) / 2.0;
+			EMS[e].gradT = (NDS[e+1].T - NDS[e].T) / EMS[e].L;
+			EMS[e].Te = (NDS[e].T + NDS[e+1].T) / 2.0;
 			//if (((EMS[e].Te - EMS[e].meltfreeze_tk) > 0.2) && EMS[e].theta[ICE]>0.) //handle the case of soil layers above ice/snow layers
 			//	prn_msg(__FILE__, __LINE__, "wrn", date_in,
 			//	        "%s temperature Te=%f K is above melting point (%f K) in element %d (nE=%d; T0=%f K, T1=%f K, theta_ice=%f)",
@@ -383,7 +445,7 @@ void PhaseChange::finalize(const SurfaceFluxes& Sdata, SnowStation& Xdata, const
  * @param date_in is the current date
  * @param verbose print detailed warnings for various situations? (default=true)
  */
-double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in, const bool& verbose)
+double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in, const bool& verbose, const double& surf_melt)
 {
 	size_t e, nE;
 	double ql_Rest;
@@ -402,6 +464,7 @@ double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in
 	}
 
 	// Execute phase changes
+	double mass_melt = surf_melt; // variable surf_melt is a constant
 	try {
 		ql_Rest = 0.;
 		e = nE;
@@ -409,7 +472,7 @@ double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in
 			e--;
 			// Verify element state against maximum possible density: only water
 			if (!(EMS[e].Rho > Constants::eps && EMS[e].Rho <= (1.-EMS[e].theta[SOIL])*Constants::density_water + (EMS[e].theta[SOIL] * EMS[e].soil[SOIL_RHO]))) {
-				prn_msg(__FILE__, __LINE__, "err", date_in, "Phase Change Begin: volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf wat_pref:%lf air:%le", e, EMS[e].Rho,
+				prn_msg(__FILE__, __LINE__, "err", date_in, "Phase Change Begin: volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf wat_pref:%lf air:%le",
 									    e, nE, EMS[e].Rho, EMS[e].theta[ICE], EMS[e].theta[WATER], EMS[e].theta[WATER_PREF], EMS[e].theta[AIR]);
 				throw IOException("Run-time error in compPhaseChange()", AT);
 			}
@@ -430,7 +493,7 @@ double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in
 			// Try melting
 			try {
 				if(!(iwatertransportmodel_soil==RICHARDSEQUATION && e<Xdata.SoilNode)) {
-					compSubSurfaceMelt(EMS[e], Xdata.number_of_solutes, sn_dt, ql_Rest, date_in);
+					compSubSurfaceMelt(EMS[e], Xdata.number_of_solutes, sn_dt, ql_Rest, date_in, mass_melt);
 				}
 			} catch(...) {
 				prn_msg(__FILE__, __LINE__, "msg-", Date(), "in compSubSurfaceMelt at element %d of %d", e, nE);
@@ -461,7 +524,7 @@ double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in
 				// In case we use Richards equation for soil, phase transisitions are calculated there. The solver for Richards equation adjusts the element temperatures
 				// and stores the heat associated with the phase transitions in Qmf. Here, we use Qmf to calculate i_Te, and adjust the nodes here.
 				i_Te = EMS[e].Te;
-				EMS[e].Te += ( (EMS[e].Qmf * sn_dt) / (EMS[e].c[TEMPERATURE] * EMS[e].Rho));
+				EMS[e].Te += ( (EMS[e].Qmf * sn_dt) / (EMS[e].c[TEMPERATURE] * EMS[e].Rho) );
 			}
 			if ( e >= Xdata.SoilNode || iwatertransportmodel_soil != RICHARDSEQUATION ) {
 				// Check if phase change did occur
@@ -573,17 +636,14 @@ double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in
 				}
 				// TODO If WATER_LAYER && ql_rest > 0, consider evaporating water left in the last element above soil!
 			} else {
-				if ( EMS[e].Te != i_Te && iwatertransportmodel_soil == RICHARDSEQUATION && e < Xdata.SoilNode ) {
+				if ( iwatertransportmodel_soil == RICHARDSEQUATION && e < Xdata.SoilNode ) {
 					// In case we use Richards equation for soil and have recent phase changes (Te != i_Te), then, adjust nodes accordingly.
 					if(e==nE-1) {
 						NDS[e+1].T+=EMS[e].Te-i_Te;
 						retTopNodeT=NDS[e+1].T;
-					} else if (e==Xdata.SoilNode-1) {
-						NDS[e+1].T=(EMS[e].Te + EMS[e+1].Te)/2.0;
-					} else {
-						NDS[e+1].T+=0.5*(EMS[e].Te-i_Te);
 					}
-					NDS[e].T+=0.5*(EMS[e].Te-i_Te);
+					// Adjust lower node of element. A bit of an ad-hoc solution to only have the lower node absorb the energy change, but it's difficult to find a good, consistent solution here.
+					NDS[e].T+=(EMS[e].Te-i_Te);
 				} else {
 					// In case we use Richards equation for soil, phase changes will be calculated in ReSolver1d::SolveRichardsEquation
 					// Nevertheless, we need to make sure to define the return value:
@@ -600,6 +660,50 @@ double PhaseChange::compPhaseChange(SnowStation& Xdata, const mio::Date& date_in
 		}
 	} catch (const exception& ) {
 		throw;
+	}
+
+	// Calculate the cumulated ice reservoir, from the bottom to the top
+	if (enable_ice_reservoir) {
+		// First, reset the CIR to zero (recalculated every time step)
+		e = nE;
+		while (e > 0) {
+			e--;
+			EMS[e].theta_i_reservoir_cumul = 0.;
+		}
+		e = 0; // Initialize e at the bottom
+		bool CIR_to_fill = false;
+		size_t e_CIR = 0;
+		double reservoir_residual_ice = 0.;
+		size_t e_loc = 0;
+		while (e < nE) { // Until the top of the snowpack
+			if (CIR_to_fill) { // If there is a cumulated reservoir currently available to fill
+				if (EMS[e].theta_i_reservoir > 0.) { // If there is ice in the reservoir
+					EMS[e_CIR].theta_i_reservoir_cumul += EMS[e].theta_i_reservoir; // Ice of the reservoir added to the layer of the open cumulated ice reservoir
+				} else {
+					CIR_to_fill = false;
+					// Test now if the last cumulated ice reservoir is full
+					if ( (EMS[e_CIR].theta[ICE]+EMS[e_CIR].theta[WATER]+EMS[e_CIR].theta[WATER_PREF]+EMS[e_CIR].theta[SOIL]+EMS[e_CIR].theta_i_reservoir_cumul >= 0.763) && (EMS[e_CIR].theta_i_reservoir_cumul>0.) ) { // If the cumulated ice reservoir is full respectively to the void available in the matrix, leave a little bit of space
+						reservoir_residual_ice = EMS[e_CIR].theta[ICE]+EMS[e_CIR].theta[WATER]+EMS[e_CIR].theta[WATER_PREF]+EMS[e_CIR].theta[SOIL]+EMS[e_CIR].theta_i_reservoir_cumul - 0.99; // Residual ice that stays in the reservoir in order not to oversaturate the matrix
+						e_loc = e_CIR;
+						while (e_loc+1 < e) {
+							e_loc++;
+							EMS[e_loc].theta_i_reservoir = 0.; // Empty ice reservoirs
+						}
+						EMS[e_CIR].theta[ICE] += EMS[e_CIR].theta_i_reservoir_cumul - reservoir_residual_ice; // Transfer ice from the cumulated ice reservoir to the matrix at lowest layer
+						EMS[e_CIR].theta[AIR] = 1. - (EMS[e_CIR].theta[ICE]+EMS[e_CIR].theta[WATER]+EMS[e_CIR].theta[WATER_PREF]+EMS[e_CIR].theta[SOIL]);
+						EMS[e_CIR].theta_i_reservoir = reservoir_residual_ice; // Leave only potential residual ice in the reservoir
+						cout << "TRANSFER OF RESERVOIR ICE";
+					}
+				}
+			} else { // Case CIR_to_fill==false
+				if (EMS[e].theta_i_reservoir > 0.) {
+					CIR_to_fill = true; // New cumulated ice reservoir to open here
+					e_CIR = e;
+					EMS[e_CIR].theta_i_reservoir_cumul += EMS[e].theta_i_reservoir; // Ice of the reservoir added to the cumulated reservoir
+				}
+			}
+			e++;
+		}
 	}
 
 	// Check surface node, in case TSS is above melting point, but the element itself is below melting point and consequently, phase changes did not occur.

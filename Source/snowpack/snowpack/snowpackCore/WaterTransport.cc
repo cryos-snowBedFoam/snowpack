@@ -1317,7 +1317,7 @@ void WaterTransport::compTransportMass(const CurrentMeteo& Mdata,
 	mergingElements(Xdata, Sdata);
 
 	try {
-		adjustDensity(Xdata);
+		adjustDensity(Xdata, Sdata);
 		if (variant=="SEAICE" && Xdata.Seaice!=NULL && iwatertransportmodel_snow == BUCKET) Xdata.Seaice->compFlooding(Xdata, Sdata);
 		transportWater(Mdata, Xdata, Sdata, ql);
 	} catch(const exception&){

@@ -67,10 +67,8 @@ class Slope {
 		unsigned int luv;
 		unsigned int lee;
 		bool north, south;
-
 		std::string snow_erosion;
 		bool mainStationDriftIndex;
-
 		bool snow_redistribution, luvDriftIndex;
 
 		unsigned int getSectorDir(const double& dir_or_expo) const;
@@ -91,8 +89,6 @@ class Cumsum {
 
 		double precip;
 		double drift, snow, runoff, rain;
-
-
 		double dhs_corr, mass_corr; // inflate/deflate variables
 		vector<double> erosion; // Cumulated eroded mass; dumped to file as rate
 		vector<double> erosion_length; // Cumulated eroded length
@@ -107,9 +103,7 @@ class Cumsum {
 //Global variables in this file:
 static string cfgfile = "io.ini";
 static string mode = "RESEARCH";
-
 bool restart = false;
-
 static mio::Date dateBegin, dateEnd;
 static vector<string> vecStationIDs;
 
@@ -135,19 +129,15 @@ Slope::Slope(const mio::Config& cfg)
        : prevailing_wind_dir(0.), nSlopes(0), mainStation(0), sector(0),
          first(1), luv(0), lee(0),
          north(false), south(false),
-
          snow_erosion("NONE"), mainStationDriftIndex(false),
-
          snow_redistribution(false), luvDriftIndex(false),
          sector_width(0)
 {
 	cfg.getValue("NUMBER_SLOPES", "SnowpackAdvanced", nSlopes);
 	cfg.getValue("SNOW_EROSION", "SnowpackAdvanced", snow_erosion);
-
 	std::transform(snow_erosion.begin(), snow_erosion.end(), snow_erosion.begin(), ::toupper);	// Force upper case
 	stringstream ss;
 	ss << "" << nSlopes;
-
 	cfg.getValue("SNOW_REDISTRIBUTION", "SnowpackAdvanced", snow_redistribution);
 	if (snow_redistribution && !(nSlopes > 1 && nSlopes % 2 == 1))
 		throw mio::IOException("Please set NUMBER_SLOPES to 3, 5, 7, or 9 with SNOW_REDISTRIBUTION set! (nSlopes="+ss.str()+")", AT);
@@ -197,7 +187,6 @@ void Slope::setSlope(const unsigned int slope_sequence, vector<SnowStation>& vec
 			luv = lee = 0;
 		}
 		sector = mainStation;
-
 		mainStationDriftIndex = ((nSlopes == 1) && (snow_erosion != "NONE"));
 
 		break;
@@ -215,7 +204,6 @@ void Slope::setSlope(const unsigned int slope_sequence, vector<SnowStation>& vec
 
 Cumsum::Cumsum(const unsigned int nSlopes)
         : precip(0.),
-
           drift(0.), snow(0.), runoff(0.), rain(0.), dhs_corr(0.), mass_corr(0.),
           erosion(nSlopes, 0.), erosion_length(nSlopes, 0.), redeposition(nSlopes, 0.), redeposition_length(nSlopes, 0.)
 
@@ -242,9 +230,7 @@ inline void Usage(const string& programname)
 		<< "\t[-e, --enddate=YYYY-MM-DDTHH:MM] (e.g.:2008-08-11T09:00 or NOW)\n"
 		<< "\t[-c, --config=<ini file>] (e.g. io.ini)\n"
 		<< "\t[-m, --mode=<operational or research>] (default: research)\n"
-
 		<< "\t[-r, --restart (skip first time step, only in research mode)\n"
-
 		<< "\t[-s, --stations=<comma delimited stationnames>] (e.g. DAV2,WFJ2)\n"
 		<< "\t[-v, --version] Print the version number\n"
 		<< "\t[-h, --help] Print help message and version information\n\n";
@@ -263,9 +249,7 @@ inline void parseCmdLine(int argc, char **argv, string& begin_date_str, string& 
 		{"begindate", required_argument, 0, 'b'},
 		{"enddate", required_argument, 0, 'e'},
 		{"mode", required_argument, 0, 'm'},
-
 		{"restart", no_argument, 0, 'r'},
-
 		{"config", required_argument, 0, 'c'},
 		{"stations", required_argument, 0, 's'},
 		{"version", no_argument, 0, 'v'},
@@ -278,9 +262,7 @@ inline void parseCmdLine(int argc, char **argv, string& begin_date_str, string& 
 		exit(1);
 	}
 
-
 	while ((opt=getopt_long( argc, argv, ":b:e:m:rc:s:v:h", long_options, &longindex)) != -1) {
-
 		switch (opt) {
 		case 0:
 			break;
@@ -302,7 +284,6 @@ inline void parseCmdLine(int argc, char **argv, string& begin_date_str, string& 
 				exit(1);
 			}
 			break;
-
 		case 'r':
 			restart = true;
 			break;

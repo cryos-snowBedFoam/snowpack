@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      transportProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+///////////////////////////////////////////
+Lx 8.0;
+Ly 0.1;
+Lz 0.001;
+
+cellsizeX 0.01;
+cellsizeZ $Lz;
+
+NEx            #calc "int($Lx/$cellsizeX)";
+NEy            1;
+NEz            1;
+
+Tref           273.15;
+
+minThickness_dynMesh    0.005;
+maxThickness_dynMesh    0.01; /// the average of min and max would be the cell size;
+							  /// this should be close to HEIGHT_NEW_ELEM in SNOWPACK 
+							  /// HEIGHT_NEW_ELEM = 0.02 for snow-height driven model otherwise is around 0.005
+
+byPass_threshold    60; /// Reading the threshold after which the flow fileds solving get stoppted to avoid computational time
+
+#calc "Info << \"\nNEx/NEy/NEz: \" << $NEx << ' ' << $NEy << ' ' << $NEz << \"\n\" << endl";
+ToArchive	false;
+activeMassChange         1.0; //active:1; off: 0.0;
+
+//////////////////////////////////////////
+P_ref           P_ref      [0  0  0  1 0 0 0]  101325;
+mu_a_ref        mu_a_ref   [1 -1 -1  0 0 0 0]  17.29e-6; //this is at 0 degC
+Cp_v_ref        Cp_v_ref   [0  2 -2 -1 0 0 0]  1853.; // at T = 0 degC
+beta_a_ref      beta_a_ref [0  0  0 -1 0 0 0]  0.003660992;
+H          		H          [0  1  0  0 0 0 0]  1.0; // reference vertical size
+hv_ref          hv_ref     [0  2 -2  0 0 0 0]  2.504e6;  // the refernece enthalpy of the water vapor component, J/kg
+hi_ref          hi_ref     [0  2 -2  0 0 0 0] -0.334e6;  // the refernece enthalpy of the ice phase, J/kg
+couplingInterval         					   1;  // the coupling interval between heat tranfer equatuons of gas and ice phase
+// ************************************************************************* //

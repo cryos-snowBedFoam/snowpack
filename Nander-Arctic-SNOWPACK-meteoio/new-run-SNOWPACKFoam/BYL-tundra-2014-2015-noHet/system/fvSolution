@@ -1,0 +1,249 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+solvers
+{
+    rho
+    {
+        solver          PBiCGStab;
+        preconditioner  DIC;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;                
+        tolerance       1e-6;
+        relTol          0;        
+    }
+
+    rhoFinal
+    {
+        $rho;
+        //tolerance       1e-09;
+        //relTol          0;
+    }    
+
+    p_rgh
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-8;
+        relTol          0.001;
+/*	        
+        solver           GAMG;
+        smoother         GaussSeidel;//DICGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.001;
+*/
+    }
+    p_rghFinal
+    {
+        $p_rgh;
+        relTol          0;
+    }
+
+    U
+    {
+        solver          PBiCGSta;
+        preconditioner  DILU;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;        
+        tolerance       1e-6;
+        relTol          0.0;
+    }
+    UFinal
+    {
+        $U;
+    }
+
+    Tg
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        //solver           GAMG;
+        //smoother         DILUGaussSeidel;        
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0;
+    }
+    TgFinal
+    {
+        $Tg;
+    }
+           
+    Ti
+    {
+        solver          PBiCGStab;
+        preconditioner  DIC;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0;
+    }
+    TiFinal
+    {
+        $Ti;
+    }
+           
+    rho_v
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0;
+    }
+    rho_vFinal
+    {
+        $rho_v;
+    } 
+          
+    voidFraction
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.0;
+    }
+    voidFractionFinal
+    {
+        $voidFraction;
+    }  
+       
+    iceFraction
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.0;
+    }
+    iceFractionFinal
+    {
+        $iceFraction;
+    }
+             
+    waterFraction
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        //solver          smoothSolver;
+        //smoother        symGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.0;
+    }
+    waterFractionFinal
+    {
+        $waterFraction;
+    }    
+}
+
+PIMPLE
+{
+    momentumPredictor no;
+    nOuterCorrectors 1;
+    nCorrectors     1;
+    nNonOrthogonalCorrectors 0;
+    
+    pRefCell        0;
+    //pRefPoint       (0 0 0);
+    pRefValue       101325;
+    
+    
+    residualControl
+    {
+		"(U|p_rgh)"//"(U|p_rgh|Ti|Tg)"
+		{
+			relTol          0;
+			tolerance      1.e-3;
+		}
+		"(Ti|Tg)"
+		{
+			relTol          0;
+			tolerance      1.e-3;
+		}
+    }	  
+}
+
+relaxationFactors
+{
+ /*
+    fields
+    {
+        rho             1.0;
+        p_rgh           0.5;
+    }
+
+    equations
+    {
+        U               0.5;
+        UFinal          1.0;
+        Tg              0.5;
+        TgFinal         1.0;
+        Ti              0.5;
+        TiFinal         1.0;
+        rho_v           0.9;
+        rho_vFinal      1.0;
+    }*//*
+	fields
+	{
+		p_rgh        0.25;
+		p_rghFinal   1;
+		"(U|rho_v|Tg|Ti|)"            0.9;
+		"(U|rho_v|Tg|Ti|)Final"     1;
+
+	}
+	
+	equations
+	{
+		"(U|rho_v|Tg|Ti|)"            0.9;
+		"(U|rho_v|Tg|Ti|)Final"     1;
+	}
+	*/
+    
+}
+
+/*
+interpolationSchemes
+{
+  voidFraction cell;
+  Tm cell;//cell;//cellPoint;//cellPointFace;//cellPointWallModified;//cellPatchConstrained;//pointMVC;
+  gradTm cell;
+  keffs cell;
+  K_ cell;
+  rho_v cell;
+  rho_vs cell;
+  rv cell;
+  U cell;
+  Jv cell;
+  the1st_dPorRhov_dt cell;
+  the2nd_divUgRhov cell;
+  the2nd_1_RhovdivUg cell;
+  the2nd_2_UgGradRhov cell;
+  the2nd_2_1_UgGradpv cell;
+  the2nd_2_2_UgGradTg cell;
+  the3rd_divJv cell;
+  the1st_dPorRho_dt cell;
+  the2nd_RhodivUg cell;
+  the3rd_UgGradRho cell;
+  the3rd_1_Gradpv cell;
+  the3rd_2_Gradpa cell;
+  the3rd_3_GradTg cell;
+}
+*/
+// ************************************************************************* //

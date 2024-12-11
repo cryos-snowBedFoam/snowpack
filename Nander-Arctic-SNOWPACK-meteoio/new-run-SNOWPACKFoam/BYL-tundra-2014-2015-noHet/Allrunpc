@@ -1,0 +1,23 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+rm -r log.*
+
+# Get application directory
+application=`getApplication`
+
+echo $application
+
+runApplication blockMesh
+
+runApplication decomposePar -newTimes
+
+#runApplication mpirun -np 12 $application -parallel # mpirun -np 4 pimpleKinematicFoam -parallel > log & 
+runParallel $application
+
+#runApplication reconstructPar -latestTime
+
+#runApplication foamToVTK

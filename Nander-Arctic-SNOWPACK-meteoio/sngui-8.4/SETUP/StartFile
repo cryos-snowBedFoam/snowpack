@@ -1,0 +1,11 @@
+[StartFile]
+; Name: file name to be used in operational startup (4 windows constructed)
+;Name=/home/fierz/alpine3d/snowpack/snowpack_opera/trunk/output/DVF2.pro
+
+;This terminates SN_GUI:
+;Name=exit
+
+; Print: *.pro-files for which a *.jpg will be constructed automatically 
+ Print=
+; Print=BED2.pro,DVF2.pro
+

@@ -1,0 +1,64 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default Euler;
+    //ddt(voidFraction,rho) backward;
+}
+gradSchemes
+{
+    default         Gauss linear;//Gauss linear;/ cellLimited Gauss linear 1;
+}
+divSchemes
+{
+    default         Gauss upwind;//Gauss upwind/linear/vanLeer/QUICK/SFCD/MUSCL/vanLeer01/cubicUpwindFit/cubic/linearUpwind limited/LUST limited/limitedLinear 1;
+        
+    div(phi) Gauss linear;
+    div(((Tg*(Cp_v_ref-Cp_a_ref))*Jv)) Gauss linear;
+
+    div(UAf,rho_v) Gauss linear;
+    div(UAf) Gauss linear;          
+    div(Jv) Gauss linear;
+    
+    //div(rho_vU) Gauss linear;
+    //div(U) Gauss linear;
+    //div(Jv) Gauss linear;
+    
+    //div(cpPhi,Tg) Gauss LUST grad(Tg);//vanLeer/LUST grad(Tg)/linear/LUST limited
+    //div(UAf,rho_v) Gauss LUST grad(rho_v);//Gauss upwind;
+}
+laplacianSchemes
+{
+    default   Gauss linear corrected;
+    laplacian((voidFraction*keff_ha),Tg) Gauss linear corrected;
+    laplacian(((1-voidFraction)*keff_i),Ti) Gauss linear corrected;
+    laplacian(iceFraction*keff_i+waterFraction*keff_w,Ti) Gauss linear corrected;
+    laplacian(keffs,Tg) Gauss linear corrected;       
+    laplacian(Deff,rho_v)          Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+// ************************************************************************* //

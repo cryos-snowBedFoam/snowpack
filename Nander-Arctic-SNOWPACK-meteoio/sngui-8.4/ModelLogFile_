@@ -1,0 +1,15 @@
+Snowpack version 3.41 compiled on Dec 19 2017 16:28:59
+	Libsnowpack 3.41 compiled on Dec 19 2017 16:28:29
+	MeteoIO 20171120.2028 compiled on Nov 20 2017 11:35:20
+Usage: snowpack
+	[-b, --begindate=YYYY-MM-DDTHH:MM] (e.g.:2007-08-11T09:00)
+	[-e, --enddate=YYYY-MM-DDTHH:MM] (e.g.:2008-08-11T09:00 or NOW)
+	[-c, --config=<ini file>] (e.g. io.ini)
+	[-m, --mode=<operational or research>] (default: research)
+	[-s, --stations=<comma delimited stationnames>] (e.g. DAV2,WFJ2)
+	[-v, --version] Print the version number
+	[-h, --help] Print help message and version information
+
+	Please not that the operational mode should only be used within SLF
+Example: snowpack -c io.ini -e 1996-06-17T00:00
+

@@ -1,0 +1,23 @@
+#!/bin/bash
+#$ -N BYL14
+#$ -S /bin/bash
+#$ -cwd
+#$ -j y 
+#$ -pe orte 4 #-pe mpi 32
+
+source $HOME/OpenFOAM/OpenFOAM-5.x/etc/bashrc
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Get application directory
+application=`getApplication`
+
+# this is working (OpenMPI and -pe orte....)
+runApplication mpirun -np $NSLOTS $application -parallel
+
+# this is not working (OpenMPI and -pe mpi....)
+#runApplication mpirun -np $NSLOTS $application -parallel
+
+# this is not working (MPICH and -pe mpi....)
+#runApplication mpirun -np $NSLOTS -machinefile $TMPDIR/machines phaseChangeTneDarcyBuoyantPimpleRSNWPCFoam -parallel 

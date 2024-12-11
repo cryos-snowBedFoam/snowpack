@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.2.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include	"../constant/transportProperties" 
+
+/*
+motionSolverLibs ( "libfvMotionSolvers.so" );
+solver          displacementLaplacian;
+displacementLaplacianCoeffs
+{
+    diffusivity     quadratic inversePointDistance (bottom);
+}
+*/
+
+//motionSolverLibs ( "libfvMotionSolvers.so" );
+
+dynamicFvMesh    topBoundaryLayerAdditionRemovalTopoFvMesh;
+topBoundaryLayerAdditionRemovalTopoFvMeshCoeffs
+{
+    boundary
+    {
+		patch			top;
+        minThickness    $minThickness_dynMesh;
+        maxThickness    $maxThickness_dynMesh; //the average of min and max would be the cell size 
+    }
+}
+
+// ************************************************************************* //

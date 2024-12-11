@@ -1,0 +1,42 @@
+EXE_INC = \
+    -I. \
+    -I./SNOWPACK_OpenFOAM_exchange \
+    -I./OpenFOAM_solving \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/OpenFOAM/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/transportModels/compressible/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/radiation/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/compressible/lnInclude \
+    -I./interface_SNOWPACK/lnInclude \
+    -I/usr/local/include/gsl \
+    -I/usr/local/include/snowpack \
+    -I/usr/local/include/meteoio
+    
+EXE_LIBS = \
+    -lfiniteVolume \
+    -ldynamicFvMesh \
+    -ltopoChangerFvMesh \
+    -ldynamicMesh \
+    -lmeshTools \
+    -lsampling \
+    -lfvOptions \
+    -lcompressibleTransportModels \
+    -lfluidThermophysicalModels \
+    -lradiationModels \
+    -lspecie \
+    -lturbulenceModels \
+    -lcompressibleTurbulenceModels \
+    -L$(FOAM_USER_LIBBIN) \
+    -ltopoChangerFvMeshNew \
+    -linterface_SNOWPACK \
+    -L/usr/local/lib \
+    -lgsl \
+    -lgslcblas \
+    -lmeteoio \
+    -lsnowpack
